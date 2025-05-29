@@ -1,0 +1,192 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>层归一化演示动画 - 向量案例</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            text-align: center;
+        }
+        .plot {
+            width: 600px;
+            height: 300px;
+            background-color: white;
+            border: 2px solid #333;
+            position: relative;
+            overflow: hidden;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            background-color: #ff5733;
+            border-radius: 50%;
+            position: absolute;
+            transition: all 2s ease-in-out;
+        }
+        .step {
+            margin: 10px 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .vector-info {
+            margin: 10px 0;
+            font-size: 16px;
+            font-family: monospace;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        .axis {
+            position: absolute;
+            background-color: #333;
+        }
+        .x-axis {
+            width: 100%;
+            height: 2px;
+            bottom: 150px;
+        }
+        .y-axis {
+            width: 2px;
+            height: 100%;
+            left: 300px;
+        }
+        .label {
+            position: absolute;
+            font-size: 14px;
+            color: #333;
+        }
+        .mean-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background-color: blue;
+            bottom: 150px;
+            transition: bottom 2s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="step" id="step-text">步骤 1: 原始输入向量 [2, 4, 1, 5, 3]</div>
+        <div class="vector-info" id="vector-text">向量值: [2, 4, 1, 5, 3]</div>
+        <div class="plot">
+            <div class="x-axis"></div>
+            <div class="y-axis"></div>
+            <div class="mean-line" id="mean-line"></div>
+            <div class="label" style="bottom: 10px; left: 580px;">X</div>
+            <div class="label" style="top: 10px; left: 310px;">Y</div>
+            <div class="dot" id="dot1" style="left: 150px; bottom: 170px;"></div>
+            <div class="dot" id="dot2" style="left: 250px; bottom: 210px;"></div>
+            <div class="dot" id="dot3" style="left: 350px; bottom: 150px;"></div>
+            <div class="dot" id="dot4" style="left: 450px; bottom: 230px;"></div>
+            <div class="dot" id="dot5" style="left: 550px; bottom: 190px;"></div>
+        </div>
+        <button onclick="startAnimation()">开始归一化</button>
+    </div>
+    <script>
+        let step = 1;
+        const originalVector = [2, 4, 1, 5, 3];
+        const mean = originalVector.reduce((a, b) => a + b, 0) / originalVector.length; // 3
+        const variance = Math.sqrt(originalVector.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / originalVector.length); // ~1.414
+        const normalizedVector = originalVector.map(x => (x - mean) / variance); // [-0.707, 0.707, -1.414, 1.414, 0]
+        const scaledShiftedVector = normalizedVector.map(x => x * 2 + 3); // [1.586, 4.414, 0.172, 5.828, 3]
+
+        function startAnimation() {
+            const dots = document.querySelectorAll('.dot');
+            const stepText = document.getElementById('step-text');
+            const vectorText = document.getElementById('vector-text');
+            const meanLine = document.getElementById('mean-line');
+
+            if (step === 1) {
+                // 步骤 2: 归一化到均值0、方差1
+                stepText.textContent = '步骤 2: 归一化到均值0、方差1';
+                vectorText.textContent = `向量值: [${normalizedVector.map(x => x.toFixed(3)).join(', ')}]`;
+                dots.forEach((dot, i) => {
+                    dot.style.left = `${300 + normalizedVector[i] * 50}px`; // 按归一化值定位
+                    dot.style.bottom = '150px'; // 均值0
+                });
+                meanLine.style.bottom = '150px';
+                step = 2;
+            } else if (step === 2) {
+                // 步骤 3: Scale (γ=2) 和 Shift (β=3) 调整
+                stepText.textContent = '步骤 3: Scale (γ=2) 和 Shift (β=3) 调整';
+                vectorText.textContent = `向量值: [${scaledShiftedVector.map(x => x.toFixed(3)).join(', ')}]`;
+                dots.forEach((dot, i) => {
+                    dot.style.left = `${300 + normalizedVector[i] * 80}px`; // Scale 放大
+                    dot.style.bottom = `${150 + 3 * 20}px`; // Shift 上移 (β=3)
+                });
+                meanLine.style.bottom = `${150 + 3 * 20}px`; // 均值线随shift上移
+                step = 3;
+            } else {
+                // 重置到初始状态
+                stepText.textContent = '步骤 1: 原始输入向量 [2, 4, 1, 5, 3]';
+                vectorText.textContent = `向量值: [${originalVector.join(', ')}]`;
+                const initialPositions = [
+                    { left: '150px', bottom: `${150 + 2 * 20}px` },
+                    { left: '250px', bottom: `${150 + 4 * 20}px` },
+                    { left: '350px', bottom: `${150 + 1 * 20}px` },
+                    { left: '450px', bottom: `${150 + 5 * 20}px` },
+                    { left: '550px', bottom: `${150 + 3 * 20}px` }
+                ];
+                dots.forEach((dot, i) => {
+                    dot.style.left = initialPositions[i].left;
+                    dot.style.bottom = initialPositions[i].bottom;
+                });
+                meanLine.style.bottom = '150px';
+                step = 1;
+            }
+        }
+    </script>
+</body>
+</html>

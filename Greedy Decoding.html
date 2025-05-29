@@ -1,0 +1,209 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Greedy Decoding Animation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        #title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        #canvas-container {
+            text-align: center;
+        }
+        #description {
+            margin-top: 20px;
+            font-size: 16px;
+            max-width: 600px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="title">Greedy Decoding in GPT: Text Generation</div>
+    <div id="canvas-container"></div>
+    <div id="description"></div>
+    <script>
+        let stage = 0;
+        let stageProgress = 0;
+        const stageDuration = 120;
+
+        // Initial sequence
+        const tokens = [15496, 11, 314, 716]; // "Hello, I am"
+        const vocab = ["a", "Grok", ".", ",", "happy"]; // Simplified vocabulary
+        const vocabSize = vocab.length;
+        let generatedTokens = [...tokens];
+        let currentLogits = [];
+        let probabilities = [];
+        let selectedToken = null;
+        let generationStep = 0;
+        const maxSteps = 6;
+
+        // Simulated logits for each generation step
+        const logitsSequence = [
+            [2.5, 1.0, 0.5, -1.0, 3.0], // Step 1: favors "happy"
+            [0.5, 2.0, 1.5, 0.0, -0.5], // Step 2: favors "Grok"
+            [-1.0, 0.5, 3.0, 1.0, 0.0], // Step 3: favors "."
+            [1.0, -0.5, 0.0, 3.5, 1.5], // Step 4: favors ","
+            [0.0, 1.5, 1.0, -0.5, 2.5], // Step 5: favors "happy"
+            [-0.5, 0.0, 2.0, 1.0, 0.5]  // Step 6: favors "."
+        ];
+
+        function setup() {
+            createCanvas(800, 600);
+            textAlign(LEFT, TOP);
+            textSize(16);
+        }
+
+        function draw() {
+            background(255);
+            stageProgress = min(stageProgress + 1, stageDuration);
+
+            // Display current sequence
+            let sequenceText = decodeTokens(generatedTokens);
+            text("Current Sequence: " + sequenceText, 50, 50);
+
+            if (stage === 0) {
+                // Initial scene
+                document.getElementById('description').innerText = "Initial input sequence: 'Hello, I am' encoded as token IDs " + tokens.join(", ") + ".";
+                if (stageProgress >= stageDuration) {
+                    stage = 1;
+                    stageProgress = 0;
+                    generationStep = 0;
+                }
+            } else if (stage === 1) {
+                // Step 1: Model inference - display logits
+                if (generationStep < maxSteps) {
+                    currentLogits = logitsSequence[generationStep];
+                    document.getElementById('description').innerText = "Step 1: Model processes input and generates logits for the next token.";
+                    drawBarChart(currentLogits, "Logits");
+                    if (stageProgress >= stageDuration) {
+                        stage = 2;
+                        stageProgress = 0;
+                    }
+                } else {
+                    stage = 4;
+                    stageProgress = 0;
+                }
+            } else if (stage === 2) {
+                // Step 2: Softmax - convert logits to probabilities
+                probabilities = softmax(currentLogits);
+                document.getElementById('description').innerText = "Step 2: Logits are converted to probabilities using softmax.";
+                drawBarChart(probabilities, "Probabilities", true);
+                if (stageProgress >= stageDuration) {
+                    stage = 3;
+                    stageProgress = 0;
+                }
+            } else if (stage === 3) {
+                // Step 3: Token selection - pick max probability
+                selectedToken = argmax(probabilities);
+                generatedTokens.push(selectedToken);
+                document.getElementById('description').innerText = "Step 3: Select token with highest probability: '" + vocab[selectedToken] + "' (ID: " + selectedToken + ").";
+                drawBarChart(probabilities, "Probabilities", true, selectedToken);
+                if (stageProgress >= stageDuration) {
+                    stage = 1;
+                    stageProgress = 0;
+                    generationStep++;
+                }
+            } else if (stage === 4) {
+                // Final scene
+                let finalText = decodeTokens(generatedTokens);
+                document.getElementById('description').innerText = "Final generated sequence: '" + finalText + "'. Limitation of greedy decoding: Always choosing the highest probability token may lead to suboptimal results, missing more creative or contextually better sequences.";
+                text("Final Sequence: " + finalText, 50, 100);
+            }
+        }
+
+        function decodeTokens(tokenIds) {
+            let initial = ["Hello", ",", "I", "am"];
+            let result = initial.slice(0, tokens.length);
+            for (let i = tokens.length; i < tokenIds.length; i++) {
+                result.push(vocab[tokenIds[i]]);
+            }
+            return result.join(" ");
+        }
+
+        function softmax(logits) {
+            let maxLogit = Math.max(...logits);
+            let expSum = logits.reduce((sum, x) => sum + Math.exp(x - maxLogit), 0);
+            return logits.map(x => Math.exp(x - maxLogit) / expSum);
+        }
+
+        function argmax(arr) {
+            return arr.indexOf(Math.max(...arr));
+        }
+
+        function drawBarChart(values, label, isProb = false, highlight = -1) {
+            let barWidth = 100;
+            let maxHeight = 200;
+            let baseY = 400;
+            let maxVal = isProb ? 1 : Math.max(...values, 0);
+            maxVal = maxVal === 0 ? 1 : maxVal;
+
+            text(label, 50, baseY - maxHeight - 30);
+            for (let i = 0; i < values.length; i++) {
+                let h = (values[i] / maxVal) * maxHeight;
+                if (i === highlight) {
+                    fill(255, 165, 0);
+                } else {
+                    fill(100, 100, 255);
+                }
+                rect(50 + i * barWidth, baseY - h, barWidth - 10, h);
+                text(vocab[i], 50 + i * barWidth, baseY + 10);
+                text(values[i].toFixed(2), 50 + i * barWidth, baseY - h - 20);
+            }
+            fill(0);
+        }
+    </script>
+</body>
+</html>
