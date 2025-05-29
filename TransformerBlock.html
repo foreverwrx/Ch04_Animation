@@ -1,0 +1,410 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformer Block Animation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #E0E0E0; /* Light gray background */
+            margin: 0;
+            padding: 20px;
+            color: #212121; /* Black text */
+        }
+        h1 {
+            font-size: 24px;
+            color: #212121; /* Black */
+            margin-bottom: 20px;
+        }
+        .container {
+            text-align: center;
+            max-width: 800px;
+        }
+        .tensor-table {
+            border-collapse: collapse;
+            margin: 20px auto; /* Center table horizontally */
+            display: block; /* Ensure block for centering */
+            width: fit-content; /* Fit content width */
+            background-color: #FFFFFF; /* White background */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Gray shadow */
+            border: 2px solid #2196F3; /* Blue border */
+        }
+        .tensor-table th, .tensor-table td {
+            border: 1px solid #B0BEC5; /* Light gray border */
+            padding: 10px;
+            font-size: 16px;
+            color: #212121; /* Black text */
+        }
+        .tensor-table th {
+            background-color: #2196F3; /* Blue header */
+            color: #FFFFFF; /* White text */
+        }
+        .tensor-table td {
+            width: 60px;
+            text-align: center;
+        }
+        .highlight {
+            background-color: #42A5F5; /* Lighter blue highlight */
+            animation: highlight 2s infinite;
+        }
+        @keyframes highlight {
+            0% { background-color: #42A5F5; }
+            50% { background-color: #64B5F6; }
+            100% { background-color: #42A5F5; }
+        }
+        .fade-in {
+            opacity: 0;
+            animation: fadeIn 1s forwards;
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        .slide-in {
+            transform: translateX(-100%);
+            animation: slideIn 1s forwards;
+        }
+        @keyframes slideIn {
+            to { transform: translateX(0); }
+        }
+        .formula {
+            font-size: 18px;
+            margin: 20px 0;
+            background-color: #E3F2FD; /* Very light blue background */
+            padding: 10px;
+            border-radius: 5px;
+            display: inline-block;
+            color: #212121; /* Black text */
+            border: 1px solid #2196F3; /* Blue border */
+        }
+        .network-diagram {
+            width: 500px;
+            height: 300px;
+            margin: 20px auto;
+            position: relative;
+            background-color: #FFFFFF; /* White background */
+            border: 1px solid #B0BEC5; /* Gray border */
+        }
+        .node {
+            width: 50px;
+            height: 50px;
+            background-color: #2196F3; /* Blue node */
+            border-radius: 50%;
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF; /* White text */
+            font-size: 12px;
+            text-align: center;
+        }
+        .arrow {
+            position: absolute;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="20"><path d="M0 10 H90 L85 5 M90 10 L85 15" stroke="#2196F3" stroke-width="2" fill="none"/></svg>');
+            width: 100px;
+            height: 20px;
+        }
+        .residual-arrow {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100"><path d="M10 90 Q100 10 190 90" stroke="#42A5F5" stroke-width="2" fill="none"/></svg>');
+            width: 200px;
+            height: 100px;
+        }
+        .bar-chart {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        .bar {
+            width: 60px;
+            background-color: #2196F3; /* Blue bars */
+            margin: 0 10px;
+            transition: height 1s ease;
+            border: 1px solid #B0BEC5; /* Gray border */
+        }
+        .step {
+            margin: 20px 0;
+            opacity: 0;
+        }
+        .step-1 { animation: fadeIn 1s 1s forwards; }
+        .step-2 { animation: fadeIn 1s 3s forwards; }
+        .step-3 { animation: fadeIn 1s 5s forwards; }
+        .step-4 { animation: fadeIn 1s 7s forwards; }
+        .step-5 { animation: fadeIn 1s 9s forwards; }
+    </style>
+</head>
+<body>
+    <h1>Transformer Block Animation</h1>
+    <div class="container">
+        <!-- Step 1: Input Tensor -->
+        <div class="step step-1">
+            <h2>Step 1: Input Tensor [2, 3, 4]</h2>
+            <table class="tensor-table" id="input-table">
+                <tr><th>Sample</th><th>Token</th><th>d1</th><th>d2</th><th>d3</th><th>d4</th></tr>
+                <tr><td>1</td><td>1</td><td>0.10</td><td>0.20</td><td>0.30</td><td>0.40</td></tr>
+                <tr><td>1</td><td>2</td><td>0.15</td><td>0.25</td><td>0.35</td><td>0.45</td></tr>
+                <tr><td>1</td><td>3</td><td>0.12</td><td>0.22</td><td>0.32</td><td>0.42</td></tr>
+                <tr><td>2</td><td>1</td><td>0.11</td><td>0.21</td><td>0.31</td><td>0.41</td></tr>
+            </table>
+        </div>
+
+        <!-- Step 2: LayerNorm 1 + Multi-Head Attention -->
+        <div class="step step-2">
+            <h2>Step 2: LayerNorm 1 + Multi-Head Attention</h2>
+            <div class="formula slide-in">x = LayerNorm(x) + Attention(x)</div>
+            <div class="network-diagram">
+                <div class="node" style="left: 20px; top: 120px;">Input</div>
+                <div class="arrow" style="left: 70px; top: 125px;"></div>
+                <div class="node" style="left: 170px; top: 120px;">Norm1</div>
+                <div class="arrow" style="left: 220px; top: 125px;"></div>
+                <div class="node" style="left: 320px; top: 120px;">MHA</div>
+                <div class="arrow" style="left: 370px; top: 125px;"></div>
+                <div class="node" style="left: 470px; top: 120px;">Output</div>
+                <div class="residual-arrow" style="left: 70px; top: 50px;"></div>
+                <div class="node" style="left: 420px; top: 120px; background-color: #42A5F5;">+</div>
+            </div>
+            <table class="tensor-table" id="mha-table">
+                <tr><th>Sample</th><th>Token</th><th>d1</th><th>d2</th><th>d3</th><th>d4</th></tr>
+                <tr><td>1</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                <tr><td>1</td><td>2</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                <tr><td>1</td><td>3</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                <tr><td>2</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+            </table>
+        </div>
+
+        <!-- Step 3: LayerNorm 2 + Feed-Forward -->
+        <div class="step step-3">
+            <h2>Step 3: LayerNorm 2 + Feed-Forward</h2>
+            <div class="formula slide-in">x = LayerNorm(x) + FeedForward(x)</div>
+            <div class="network-diagram">
+                <div class="node" style="left: 20px; top: 120px;">Input</div>
+                <div class="arrow" style="left: 70px; top: 125px;"></div>
+                <div class="node" style="left: 170px; top: 120px;">Norm2</div>
+                <div class="arrow" style="left: 220px; top: 125px;"></div>
+                <div class="node" style="left: 320px; top: 120px;">FF</div>
+                <div class="arrow" style="left: 370px; top: 125px;"></div>
+                <div class="node" style="left: 470px; top: 120px;">Output</div>
+                <div class="residual-arrow" style="left: 70px; top: 50px;"></div>
+                <div class="node" style="left: 420px; top: 120px; background-color: #42A5F5;">+</div>
+            </div>
+            <table class="tensor-table" id="ff-table">
+                <tr><th>Sample</th><th>Token</th><th>d1</th><th>d2</th><th>d3</th><th>d4</th></tr>
+                <tr><td>1</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                <tr><td>1</td><td>2</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                <tr><td>1</td><td>3</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                <tr><td>2</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+            </table>
+        </div>
+
+        <!-- Step 4: Gradient Flow with Residuals -->
+        <div class="step step-4">
+            <h2>Step 4: Gradient Flow with Residuals</h2>
+            <div class="network-diagram">
+                <div class="node" style="left: 20px; top: 120px;">Output</div>
+                <div class="arrow" style="left: 70px; top: 125px; transform: rotate(180deg);"></div>
+                <div class="node" style="left: 170px; top: 120px;">FF</div>
+                <div class="arrow" style="left: 220px; top: 125px; transform: rotate(180deg);"></div>
+                <div class="node" style="left: 320px; top: 120px;">Norm2</div>
+                <div class="arrow" style="left: 370px; top: 125px; transform: rotate(180deg);"></div>
+                <div class="node" style="left: 470px; top: 120px;">Input</div>
+                <div class="residual-arrow" style="left: 70px; top: 50px;"></div>
+                <div class="node" style="left: 420px; top: 120px; background-color: #42A5F5;">+</div>
+            </div>
+            <p>Gradient Mean: ~0.1 (Higher due to residual paths)</p>
+        </div>
+
+        <!-- Step 5: Gradient Comparison -->
+        <div class="step step-5">
+            <h2>Step 5: Gradient Comparison</h2>
+            <div class="bar-chart">
+                <div style="height: 50px;" class="bar">No Residual</div>
+                <div style="height: 150px;" class="bar">With Residual</div>
+            </div>
+            <table class="tensor-table">
+                <tr><th>Case</th><th>Gradient Mean</th></tr>
+                <tr><td>No Residual</td><td class="highlight">0.001</td></tr>
+                <tr><td>With Residual</td><td class="highlight">0.1</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Input tensor [2, 3, 4]
+        const inputTensor = [
+            [[0.10, 0.20, 0.30, 0.40], [0.15, 0.25, 0.35, 0.45], [0.12, 0.22, 0.32, 0.42]],
+            [[0.11, 0.21, 0.31, 0.41], [0, 0, 0, 0], [0, 0, 0, 0]]
+        ];
+
+        // LayerNorm parameters
+        const eps = 1e-5;
+        const scale = [1, 1, 1, 1];
+        const shift = [0, 0, 0, 0];
+
+        // Feed-Forward weights and biases
+        const ffWeight1 = [
+            [0.5, 0.1, 0.2, 0.3, 0.4, 0.1, 0.2, 0.3],
+            [0.1, 0.4, 0.1, 0.2, 0.3, 0.4, 0.1, 0.2],
+            [0.2, 0.1, 0.5, 0.1, 0.2, 0.3, 0.4, 0.1],
+            [0.3, 0.2, 0.1, 0.4, 0.1, 0.2, 0.3, 0.4]
+        ];
+        const ffBias1 = [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02];
+        const ffWeight2 = [
+            [0.4, 0.1, 0.2, 0.3],
+            [0.1, 0.4, 0.1, 0.2],
+            [0.2, 0.1, 0.5, 0.1],
+            [0.3, 0.2, 0.1, 0.4],
+            [0.4, 0.3, 0.2, 0.1],
+            [0.1, 0.4, 0.3, 0.2],
+            [0.2, 0.1, 0.4, 0.3],
+            [0.3, 0.2, 0.1, 0.4]
+        ];
+        const ffBias2 = [0.01, 0.01, 0.01, 0.01];
+
+        // LayerNorm: (x - mean) / sqrt(var + eps) * scale + shift
+        function layerNorm(input) {
+            const output = input.map(batch => batch.map(token => {
+                if (token.every(x => x === 0)) return token; // Skip padding
+                const mean = token.reduce((sum, x) => sum + x, 0) / token.length;
+                const variance = token.reduce((sum, x) => sum + (x - mean) ** 2, 0) / token.length;
+                return token.map((x, i) => Number(((x - mean) / Math.sqrt(variance + eps) * scale[i] + shift[i]).toFixed(2)));
+            }));
+            return output;
+        }
+
+        // Simplified Multi-Head Attention (mock computation)
+        function multiHeadAttention(input) {
+            // Simulate attention with a simple linear transformation
+            const output = input.map(batch => batch.map(token => {
+                if (token.every(x => x === 0)) return token;
+                return token.map(x => Number((x * 0.8 + 0.05).toFixed(2))); // Mock attention effect
+            }));
+            return output;
+        }
+
+        // GELU approximation
+        function gelu(x) {
+            const c = Math.sqrt(2 / Math.PI);
+            const k = 0.044715;
+            return x * (1 + Math.tanh(c * (x + k * x * x * x))) / 2;
+        }
+
+        // Matrix multiplication
+        function matMul(input, weight, bias) {
+            const output = [];
+            for (let i = 0; i < input.length; i++) {
+                const row = [];
+                for (let j = 0; j < weight[0].length; j++) {
+                    let sum = bias[j];
+                    for (let k = 0; k < input[0].length; k++) {
+                        sum += input[i][k] * weight[k][j];
+                    }
+                    row.push(Number(sum.toFixed(2)));
+                }
+                output.push(row);
+            }
+            return output;
+        }
+
+        // Feed-Forward: Linear1 -> GELU -> Linear2
+        function feedForward(input) {
+            return input.map(batch => batch.map(token => {
+                if (token.every(x => x === 0)) return token;
+                const linear1 = matMul([token], ffWeight1, ffBias1)[0];
+                const geluOut = linear1.map(x => Number(gelu(x).toFixed(2)));
+                return matMul([geluOut], ffWeight2, ffBias2)[0];
+            }));
+        }
+
+        // Residual connection: x + y
+        function residualConnection(x, y) {
+            return x.map((batch, i) => batch.map((token, j) => {
+                if (token.every(x => x === 0)) return token;
+                return token.map((val, k) => Number((val + y[i][j][k]).toFixed(2)));
+            }));
+        }
+
+        // Update table
+        function updateTable(tableId, tensor) {
+            const table = document.getElementById(tableId);
+            const rows = table.getElementsByTagName('tr');
+            let rowIdx = 1;
+            for (let i = 0; i < tensor.length; i++) {
+                for (let j = 0; j < tensor[i].length; j++) {
+                    if (tensor[i][j].every(x => x === 0)) continue;
+                    const cells = rows[rowIdx].getElementsByTagName('td');
+                    for (let k = 0; k < tensor[i][j].length; k++) {
+                        cells[k + 2].textContent = tensor[i][j][k];
+                    }
+                    rowIdx++;
+                }
+            }
+        }
+
+        // Simulate Transformer block
+        function simulateTransformerBlock() {
+            // Step 2: LayerNorm 1 + MHA + Residual
+            setTimeout(() => {
+                const norm1 = layerNorm(inputTensor);
+                const mha = multiHeadAttention(norm1);
+                const mhaOutput = residualConnection(norm1, mha);
+                updateTable('mha-table', mhaOutput);
+            }, 3000); // Sync with Step 2 fade-in
+
+            // Step 3: LayerNorm 2 + FF + Residual
+            setTimeout(() => {
+                const norm1 = layerNorm(inputTensor);
+                const mha = multiHeadAttention(norm1);
+                const mhaOutput = residualConnection(norm1, mha);
+                const norm2 = layerNorm(mhaOutput);
+                const ff = feedForward(norm2);
+                const ffOutput = residualConnection(norm2, ff);
+                updateTable('ff-table', ffOutput);
+            }, 5000); // Sync with Step 3 fade-in
+        }
+
+        // Run simulation
+        simulateTransformerBlock();
+    </script>
+</body>
+</html>

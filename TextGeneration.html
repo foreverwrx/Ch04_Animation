@@ -1,0 +1,429 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Generation Animation with Dynamic Probabilities</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #E0E0E0; /* Light gray background */
+            margin: 0;
+            padding: 20px;
+            color: #212121; /* Black text */
+        }
+        h1 {
+            font-size: 24px;
+            color: #212121; /* Black */
+            margin-bottom: 20px;
+        }
+        .container {
+            text-align: center;
+            max-width: 800px;
+        }
+        .tensor-table {
+            border-collapse: collapse;
+            margin: 20px auto; /* Center table horizontally */
+            display: block; /* Ensure block for centering */
+            width: fit-content; /* Fit content width */
+            background-color: #FFFFFF; /* White background */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Gray shadow */
+            border: 2px solid #2196F3; /* Blue border */
+        }
+        .tensor-table th, .tensor-table td {
+            border: 1px solid #B0BEC5; /* Light gray border */
+            padding: 10px;
+            font-size: 16px;
+            color: #212121; /* Black text */
+        }
+        .tensor-table th {
+            background-color: #2196F3; /* Blue header */
+            color: #FFFFFF; /* White text */
+        }
+        .tensor-table td {
+            width: 100px;
+            text-align: center;
+        }
+        .highlight {
+            background-color: #42A5F5; /* Lighter blue highlight */
+            animation: highlight 2s infinite;
+        }
+        @keyframes highlight {
+            0% { background-color: #42A5F5; }
+            50% { background-color: #64B5F6; }
+            100% { background-color: #42A5F5; }
+        }
+        .fade-in {
+            opacity: 0;
+            animation: fadeIn 1s forwards;
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        .slide-in {
+            transform: translateX(100%);
+            animation: slideIn 1s forwards;
+        }
+        @keyframes slideIn {
+            to { transform: translateX(0); }
+        }
+        .output-text {
+            font-size: 20px;
+            margin: 20px 0;
+            background-color: #E3F2FD; /* Very light blue background */
+            padding: 10px;
+            border-radius: 5px;
+            color: #212121; /* Black text */
+            border: 1px solid #2196F3; /* Blue border */
+        }
+        .bar-chart {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .bar {
+            width: 60px;
+            background-color: #2196F3; /* Blue bars */
+            margin: 0 5px;
+            transition: height 1s ease;
+            border: 1px solid #B0BEC5; /* Gray border */
+            position: relative;
+        }
+        .bar-label {
+            position: absolute;
+            bottom: -20px;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+            color: #212121;
+        }
+        .bar-value {
+            position: absolute;
+            top: -20px;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+            color: #212121;
+        }
+        .diagram {
+            width: 400px;
+            height: 100px;
+            margin: 20px auto;
+            position: relative;
+            background-color: #FFFFFF; /* White background */
+            border: 1px solid #B0BEC5; /* Gray border */
+        }
+        .node {
+            width: 60px;
+            height: 40px;
+            background-color: #2196F3; /* Blue node */
+            border-radius: 5px;
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF; /* White text */
+            font-size: 14px;
+        }
+        .arrow {
+            position: absolute;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="20"><path d="M0 10 H90 L85 5 M90 10 L85 15" stroke="#2196F3" stroke-width="2" fill="none"/></svg>');
+            width: 100px;
+            height: 20px;
+        }
+        .step {
+            margin: 20px 0;
+            opacity: 0;
+        }
+        .step-1 { animation: fadeIn 1s 1s forwards; }
+        .step-2 { animation: fadeIn 1s 3s forwards; }
+        .step-3 { animation: fadeIn 1s 5s forwards; }
+        .step-4 { animation: fadeIn 1s 7s forwards; }
+        .step-5 { animation: fadeIn 1s 9s forwards; }
+    </style>
+</head>
+<body>
+    <h1>Text Generation Animation with Dynamic Probabilities</h1>
+    <div class="container">
+        <!-- Step 1: Input Prompt -->
+        <div class="step step-1">
+            <h2>Step 1: Input Prompt</h2>
+            <div class="diagram">
+                <div class="node" style="left: 20px; top: 30px;">Prompt</div>
+                <div class="arrow" style="left: 80px; top: 35px;"></div>
+                <div class="node" style="left: 180px; top: 30px;">Model</div>
+            </div>
+            <table class="tensor-table" id="prompt-table">
+                <tr><th>Token</th><th>Value</th></tr>
+                <tr><td>1</td><td>The</td></tr>
+                <tr><td>2</td><td>quick</td></tr>
+            </table>
+            <div class="output-text" id="output-text-1">Current Output: The quick</div>
+        </div>
+
+        <!-- Step 2: Generate Token 3 (brown) -->
+        <div class="step step-2">
+            <h2>Step 2: Generate Token 3</h2>
+            <div class="diagram">
+                <div class="node" style="left: 20px; top: 30px;">Prompt</div>
+                <div class="arrow" style="left: 80px; top: 35px;"></div>
+                <div class="node" style="left: 180px; top: 30px;">Model</div>
+                <div class="arrow" style="left: 240px; top: 35px;"></div>
+                <div class="node" style="left: 340px; top: 30px;">Token</div>
+            </div>
+            <table class="tensor-table slide-in" id="prob-table-2">
+                <tr><th>Token</th><th>Probability</th></tr>
+                <tr><td>brown</td><td>0</td></tr>
+                <tr><td>red</td><td>0</td></tr>
+                <tr><td>blue</td><td>0</td></tr>
+            </table>
+            <div class="bar-chart" id="bar-chart-2">
+                <div style="height: 0px;" class="bar"><div class="bar-value">0</div><div class="bar-label">brown</div></div>
+                <div style="height: 0px;" class="bar"><div class="bar-value">0</div><div class="bar-label">red</div></div>
+                <div style="height: 0px;" class="bar"><div class="bar-value">0</div><div class="bar-label">blue</div></div>
+            </div>
+            <div class="output-text" id="output-text-2">Current Output: The quick</div>
+        </div>
+
+        <!-- Step 3: Generate Token 4 (fox) -->
+        <div class="step step-3">
+            <h2>Step 3: Generate Token 4</h2>
+            <div class="diagram">
+                <div class="node" style="left: 20px; top: 30px;">Prompt</div>
+                <div class="arrow" style="left: 80px; top: 35px;"></div>
+                <div class="node" style="left: 180px; top: 30px;">Model</div>
+                <div class="arrow" style="left: 240px; top: 35px;"></div>
+                <div class="node" style="left: 340px; top: 30px;">Token</div>
+            </div>
+            <table class="tensor-table slide-in" id="prob-table-3">
+                <tr><th>Token</th><th>Probability</th></tr>
+                <tr><td>fox</td><td>0</td></tr>
+                <tr><td>dog</td><td>0</td></tr>
+                <tr><td>cat</td><td>0</td></tr>
+            </table>
+            <div class="bar-chart" id="bar-chart-3">
+                <div style="height: 0px;" class="bar"><div class="bar-value">0</div><div class="bar-label">fox</div></div>
+                <div style="height: 0px;" class="bar"><div class="bar-value">0</div><div class="bar-label">dog</div></div>
+                <div style="height: 0px;" class="bar"><div class="bar-value">0</div><div class="bar-label">cat</div></div>
+            </div>
+            <div class="output-text" id="output-text-3">Current Output: The quick brown</div>
+        </div>
+
+        <!-- Step 4: Generate Token 5 (jumps) -->
+        <div class="step step-4">
+            <h2>Step 4: Generate Token 5</h2>
+            <div class="diagram">
+                <div class="node" style="left: 20px; top: 30px;">Prompt</div>
+                <div class="arrow" style="left: 80px; top: 35px;"></div>
+                <div class="node" style="left: 180px; top: 30px;">Model</div>
+                <div class="arrow" style="left: 240px; top: 35px;"></div>
+                <div class="node" style="left: 340px; top: 30px;">Token</div>
+            </div>
+            <table class="tensor-table slide-in" id="prob-table-4">
+                <tr><th>Token</th><th>Probability</th></tr>
+                <tr><td>jumps</td><td>0</td></tr>
+                <tr><td>runs</td><td>0</td></tr>
+                <tr><td>leaps</td><td>0</td></tr>
+            </table>
+            <div class="bar-chart" id="bar-chart-4">
+                <div style="height: 0px;" class="bar"><div class="bar-value">0</div><div class="bar-label">jumps</div></div>
+                <div style="height: 0px;" class="bar"><div class="bar-value">0</div><div class="bar-label">runs</div></div>
+                <div style="height: 0px;" class="bar"><div class="bar-value">0</div><div class="bar-label">leaps</div></div>
+            </div>
+            <div class="output-text" id="output-text-4">Current Output: The quick brown fox</div>
+        </div>
+
+        <!-- Step 5: Final Output -->
+        <div class="step step-5">
+            <h2>Step 5: Final Output</h2>
+            <table class="tensor-table" id="final-table">
+                <tr><th>Token</th><th>Value</th></tr>
+                <tr><td>1</td><td>The</td></tr>
+                <tr><td>2</td><td>quick</td></tr>
+                <tr><td>3</td><td>brown</td></tr>
+                <tr><td>4</td><td>fox</td></tr>
+                <tr><td>5</td><td>jumps</td></tr>
+            </table>
+            <div class="output-text" id="output-text-5">Final Output: The quick brown fox jumps</div>
+        </div>
+    </div>
+
+    <script>
+        // Mock logits for each generation step
+        const logits = [
+            // Step 2: Token 3 (brown, red, blue)
+            { brown: 2.0, red: 0.5, blue: 0.2 },
+            // Step 3: Token 4 (fox, dog, cat)
+            { fox: 2.5, dog: 0.7, cat: 0.3 },
+            // Step 4: Token 5 (jumps, runs, leaps)
+            { jumps: 2.2, runs: 0.6, leaps: 0.4 }
+        ];
+
+        // Candidate tokens for each step
+        const candidates = [
+            ['brown', 'red', 'blue'],
+            ['fox', 'dog', 'cat'],
+            ['jumps', 'runs', 'leaps']
+        ];
+
+        // Generated sequence
+        const sequence = ['The', 'quick', 'brown', 'fox', 'jumps'];
+
+        // Mock softmax: exp(logit) / sum(exp(logits))
+        function softmax(logitsObj) {
+            const values = Object.values(logitsObj);
+            const expValues = values.map(v => Math.exp(v));
+            const sumExp = expValues.reduce((sum, v) => sum + v, 0);
+            const probs = expValues.map(v => v / sumExp);
+            const result = {};
+            Object.keys(logitsObj).forEach((key, i) => {
+                result[key] = Number(probs[i].toFixed(2));
+            });
+            return result;
+        }
+
+        // Select token (greedy: max probability)
+        function selectToken(probs) {
+            let maxProb = -1;
+            let selected = '';
+            for (const [token, prob] of Object.entries(probs)) {
+                if (prob > maxProb) {
+                    maxProb = prob;
+                    selected = token;
+                }
+            }
+            return selected;
+        }
+
+        // Update probability table
+        function updateProbTable(step, probs) {
+            const table = document.getElementById(`prob-table-${step}`);
+            const rows = table.getElementsByTagName('tr');
+            const selected = selectToken(probs);
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                const token = candidates[step - 2][i - 1];
+                cells[0].textContent = token;
+                cells[1].textContent = probs[token];
+                if (token === selected) {
+                    cells[0].classList.add('highlight');
+                    cells[1].classList.add('highlight');
+                }
+            }
+        }
+
+        // Update bar chart
+        function updateBarChart(step, probs) {
+            const chart = document.getElementById(`bar-chart-${step}`);
+            const bars = chart.getElementsByClassName('bar');
+            const selected = selectToken(probs);
+            for (let i = 0; i < bars.length; i++) {
+                const token = candidates[step - 2][i];
+                const prob = probs[token];
+                bars[i].style.height = `${prob * 200}px`; // Scale to 200px max
+                bars[i].getElementsByClassName('bar-value')[0].textContent = prob;
+                if (token === selected) {
+                    bars[i].style.backgroundColor = '#42A5F5';
+                }
+            }
+        }
+
+        // Update output text
+        function updateOutputText(step) {
+            const text = document.getElementById(`output-text-${step}`);
+            text.textContent = `Current Output: ${sequence.slice(0, step + 1).join(' ')}`;
+        }
+
+        // Update final table
+        function updateFinalTable() {
+            const table = document.getElementById('final-table');
+            const rows = table.getElementsByTagName('tr');
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                cells[1].textContent = sequence[i - 1];
+                if (i > 2) {
+                    cells[1].classList.add('highlight');
+                }
+            }
+            document.getElementById('output-text-5').textContent = `Final Output: ${sequence.join(' ')}`;
+        }
+
+        // Simulate text generation
+        function simulateTextGeneration() {
+            // Step 2: Token 3 (brown)
+            setTimeout(() => {
+                const probs = softmax(logits[0]);
+                updateProbTable(2, probs);
+                updateBarChart(2, probs);
+                updateOutputText(2);
+            }, 3000); // Sync with Step 2 fade-in
+
+            // Step 3: Token 4 (fox)
+            setTimeout(() => {
+                const probs = softmax(logits[1]);
+                updateProbTable(3, probs);
+                updateBarChart(3, probs);
+                updateOutputText(3);
+            }, 5000); // Sync with Step 3 fade-in
+
+            // Step 4: Token 5 (jumps)
+            setTimeout(() => {
+                const probs = softmax(logits[2]);
+                updateProbTable(4, probs);
+                updateBarChart(4, probs);
+                updateOutputText(4);
+            }, 7000); // Sync with Step 4 fade-in
+
+            // Step 5: Final output
+            setTimeout(() => {
+                updateFinalTable();
+            }, 9000); // Sync with Step 5 fade-in
+        }
+
+        // Run simulation
+        simulateTextGeneration();
+    </script>
+</body>
+</html>

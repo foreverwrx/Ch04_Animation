@@ -1,0 +1,246 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FeedForward and GELU Animation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #E0E0E0; /* Light gray background */
+            margin: 0;
+            padding: 20px;
+            color: #212121; /* Black text */
+        }
+        h1 {
+            font-size: 24px;
+            color: #212121; /* Black */
+            margin-bottom: 20px;
+        }
+        .container {
+            text-align: center;
+            max-width: 800px;
+        }
+        .tensor-table {
+            border-collapse: collapse;
+            margin: 20px auto; /* Center table horizontally */
+            display: block; /* Ensure table is treated as block for centering */
+            width: fit-content; /* Adjust table width to content */
+            background-color: #FFFFFF; /* White background */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Gray shadow */
+            border: 2px solid #2196F3; /* Blue border */
+        }
+        .tensor-table th, .tensor-table td {
+            border: 1px solid #B0BEC5; /* Light gray border */
+            padding: 10px;
+            font-size: 16px;
+            color: #212121; /* Black text */
+        }
+        .tensor-table th {
+            background-color: #2196F3; /* Blue header */
+            color: #FFFFFF; /* White text */
+        }
+        .tensor-table td {
+            width: 60px;
+            text-align: center;
+        }
+        .highlight {
+            background-color: #42A5F5; /* Lighter blue for highlight */
+            animation: highlight 2s infinite;
+        }
+        @keyframes highlight {
+            0% { background-color: #42A5F5; }
+            50% { background-color: #64B5F6; }
+            100% { background-color: #42A5F5; }
+        }
+        .fade-in {
+            opacity: 0;
+            animation: fadeIn 1s forwards;
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        .slide-in {
+            transform: translateX(-100%);
+            animation: slideIn 1s forwards;
+        }
+        @keyframes slideIn {
+            to { transform: translateX(0); }
+        }
+        .formula {
+            font-size: 18px;
+            margin: 20px 0;
+            background-color: #E3F2FD; /* Very light blue background */
+            padding: 10px;
+            border-radius: 5px;
+            display: inline-block;
+            color: #212121; /* Black text */
+            border: 1px solid #2196F3; /* Blue border */
+        }
+        .gelu-curve {
+            width: 300px;
+            height: 200px;
+            margin: 20px auto;
+            border: 1px solid #B0BEC5; /* Gray border */
+            position: relative;
+            background-color: #FFFFFF; /* White background */
+        }
+        .curve-line {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><path d="M0 180 Q50 160 100 120 Q150 80 200 120 Q250 160 300 180" stroke="#2196F3" stroke-width="2" fill="none"/></svg>');
+        }
+        .point {
+            width: 10px;
+            height: 10px;
+            background-color: #2196F3; /* Blue point */
+            border-radius: 50%;
+            position: absolute;
+            animation: movePoint 2s infinite;
+        }
+        @keyframes movePoint {
+            0% { left: 50px; top: 160px; }
+            50% { left: 150px; top: 80px; }
+            100% { left: 250px; top: 160px; }
+        }
+        .bar-chart {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        .bar {
+            width: 40px;
+            background-color: #2196F3; /* Blue bars */
+            margin: 0 5px;
+            transition: height 1s ease;
+            border: 1px solid #B0BEC5; /* Gray border */
+        }
+        .step {
+            margin: 20px 0;
+            opacity: 0;
+        }
+        .step-1 { animation: fadeIn 1s 1s forwards; }
+        .step-2 { animation: fadeIn 1s 3s forwards; }
+        .step-3 { animation: fadeIn 1s 5s forwards; }
+        .step-4 { animation: fadeIn 1s 7s forwards; }
+        .step-5 { animation: fadeIn 1s 9s forwards; }
+    </style>
+</head>
+<body>
+    <h1>FeedForward and GELU Animation</h1>
+    <div class="container">
+        <!-- Step 1: Input Tensor -->
+        <div class="step step-1">
+            <h2>Step 1: Input Tensor [2, 3, 4]</h2>
+            <table class="tensor-table">
+                <tr><th>Sample</th><th>Token</th><th>d1</th><th>d2</th><th>d3</th><th>d4</th></tr>
+                <tr><td>1</td><td>1</td><td>0.10</td><td>0.20</td><td>0.30</td><td>0.40</td></tr>
+                <tr><td>1</td><td>2</td><td>0.15</td><td>0.25</td><td>0.35</td><td>0.45</td></tr>
+                <tr><td>1</td><td>3</td><td>0.12</td><td>0.22</td><td>0.32</td><td>0.42</td></tr>
+                <tr><td>2</td><td>1</td><td>0.11</td><td>0.21</td><td>0.31</td><td>0.41</td></tr>
+            </table>
+        </div>
+
+        <!-- Step 2: First Linear Layer -->
+        <div class="step step-2">
+            <h2>Step 2: First Linear Layer (4 -> 8)</h2>
+            <div class="formula slide-in">x = x @ W1 + b1</div>
+            <table class="tensor-table">
+                <tr><th>Sample</th><th>Token</th><th>d1</th><th>d2</th><th>d3</th><th>d4</th><th>d5</th><th>d6</th><th>d7</th><th>d8</th></tr>
+                <tr><td>1</td><td>1</td><td>0.50</td><td>0.60</td><td>0.70</td><td>0.80</td><td>0.55</td><td>0.65</td><td>0.75</td><td>0.85</td></tr>
+                <tr><td>1</td><td>2</td><td>0.52</td><td>0.62</td><td>0.72</td><td>0.82</td><td>0.57</td><td>0.67</td><td>0.77</td><td>0.87</td></tr>
+            </table>
+        </div>
+
+        <!-- Step 3: GELU Activation -->
+        <div class="step step-3">
+            <h2>Step 3: GELU Activation</h2>
+            <div class="formula slide-in">GELU(x) ≈ x * Φ(x)</div>
+            <div class="gelu-curve">
+                <div class="curve-line"></div>
+                <div class="point"></div>
+            </div>
+            <table class="tensor-table">
+                <tr><th>Sample</th><th>Token</th><th>d1</th><th>d2</th><th>d3</th><th>d4</th><th>d5</th><th>d6</th><th>d7</th><th>d8</th></tr>
+                <tr><td>1</td><td>1</td><td>0.45</td><td>0.58</td><td>0.68</td><td>0.79</td><td>0.50</td><td>0.62</td><td>0.73</td><td>0.84</td></tr>
+                <tr><td>1</td><td>2</td><td>0.47</td><td>0.60</td><td>0.70</td><td>0.81</td><td>0.52</td><td>0.64</td><td>0.75</td><td>0.86</td></tr>
+            </table>
+        </div>
+
+        <!-- Step 4: Second Linear Layer -->
+        <div class="step step-4">
+            <h2>Step 4: Second Linear Layer (8 -> 4)</h2>
+            <div class="formula slide-in">x = x @ W2 + b2</div>
+            <table class="tensor-table">
+                <tr><th>Sample</th><th>Token</th><th>d1</th><th>d2</th><th>d3</th><th>d4</th></tr>
+                <tr><td>1</td><td>1</td><td>0.15</td><td>0.25</td><td>0.35</td><td>0.45</td></tr>
+                <tr><td>1</td><td>2</td><td>0.17</td><td>0.27</td><td>0.37</td><td>0.47</td></tr>
+                <tr><td>1</td><td>3</td><td>0.14</td><td>0.24</td><td>0.34</td><td>0.44</td></tr>
+                <tr><td>2</td><td>1</td><td>0.16</td><td>0.26</td><td>0.36</td><td>0.46</td></tr>
+            </table>
+        </div>
+
+        <!-- Step 5: Output with Dropout -->
+        <div class="step step-5">
+            <h2>Step 5: Output with Dropout</h2>
+            <table class="tensor-table">
+                <tr><th>Sample</th><th>Token</th><th>d1</th><th>d2</th><th>d3</th><th>d4</th></tr>
+                <tr><td>1</td><td>1</td><td>0.15</td><td class="highlight">0.00</td><td>0.35</td><td>0.45</td></tr>
+                <tr><td>1</td><td>2</td><td>0.17</td><td>0.27</td><td class="highlight">0.00</td><td>0.47</td></tr>
+                <tr><td>1</td><td>3</td><td>0.14</td><td>0.24</td><td>0.34</td><td>0.44</td></tr>
+                <tr><td>2</td><td>1</td><td>0.16</td><td>0.26</td><td>0.36</td><td class="highlight">0.00</td></tr>
+            </table>
+            <div class="bar-chart">
+                <div style="height: 80px;" class="bar"></div>
+                <div style="height: 120px;" class="bar"></div>
+                <div style="height: 100px;" class="bar"></div>
+                <div style="height: 140px;" class="bar"></div>
+            </div>
+            <p>Output Shape: [2, 3, 4]</p>
+        </div>
+    </div>
+</body>
+</html>

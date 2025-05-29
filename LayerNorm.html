@@ -1,0 +1,207 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Layer Normalization Animation (Blue Theme)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #E0E0E0; /* Light gray background */
+            margin: 0;
+            padding: 20px;
+            color: #212121; /* Black text */
+        }
+        h1 {
+            font-size: 24px;
+            color: #212121; /* Black */
+            margin-bottom: 20px;
+        }
+        .container {
+            text-align: center;
+            max-width: 800px;
+        }
+        .tensor-table {
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: #FFFFFF; /* White background */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Gray shadow */
+            border: 2px solid #2196F3; /* Blue border */
+        }
+        .tensor-table th, .tensor-table td {
+            border: 1px solid #B0BEC5; /* Light gray border */
+            padding: 10px;
+            font-size: 16px;
+            color: #212121; /* Black text */
+        }
+        .tensor-table th {
+            background-color: #2196F3; /* Blue header */
+            color: #FFFFFF; /* White text */
+        }
+        .tensor-table td {
+            width: 60px;
+            text-align: center;
+        }
+        .highlight {
+            background-color: #42A5F5; /* Lighter blue for highlight */
+            animation: highlight 2s infinite;
+        }
+        @keyframes highlight {
+            0% { background-color: #42A5F5; }
+            50% { background-color: #64B5F6; }
+            100% { background-color: #42A5F5; }
+        }
+        .fade-in {
+            opacity: 0;
+            animation: fadeIn 1s forwards;
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        .slide-in {
+            transform: translateX(-100%);
+            animation: slideIn 1s forwards;
+        }
+        @keyframes slideIn {
+            to { transform: translateX(0); }
+        }
+        .formula {
+            font-size: 18px;
+            margin: 20px 0;
+            background-color: #E3F2FD; /* Very light blue background */
+            padding: 10px;
+            border-radius: 5px;
+            display: inline-block;
+            color: #212121; /* Black text */
+            border: 1px solid #2196F3; /* Blue border */
+        }
+        .bar-chart {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        .bar {
+            width: 40px;
+            background-color: #2196F3; /* Blue bars */
+            margin: 0 5px;
+            transition: height 1s ease;
+            border: 1px solid #B0BEC5; /* Gray border */
+        }
+        .step {
+            margin: 20px 0;
+            opacity: 0;
+        }
+        .step-1 { animation: fadeIn 1s 1s forwards; }
+        .step-2 { animation: fadeIn 1s 3s forwards; }
+        .step-3 { animation: fadeIn 1s 5s forwards; }
+        .step-4 { animation: fadeIn 1s 7s forwards; }
+        .step-5 { animation: fadeIn 1s 9s forwards; }
+    </style>
+</head>
+<body>
+    <h1>Layer Normalization Animation</h1>
+    <div class="container">
+        <!-- Step 1: Input Tensor -->
+        <div class="step step-1">
+            <h2>Step 1: Input Tensor [2, 5]</h2>
+            <table class="tensor-table">
+                <tr><th>Sample</th><th>x1</th><th>x2</th><th>x3</th><th>x4</th><th>x5</th></tr>
+                <tr><td>1</td><td>0.23</td><td>0.35</td><td>0.00</td><td>0.22</td><td>0.00</td></tr>
+                <tr><td>2</td><td>0.21</td><td>0.24</td><td>0.00</td><td>0.52</td><td>0.33</td></tr>
+            </table>
+        </div>
+
+        <!-- Step 2: Compute Mean and Variance -->
+        <div class="step step-2">
+            <h2>Step 2: Compute Mean and Variance</h2>
+            <table class="tensor-table">
+                <tr><th>Sample</th><th>Mean</th><th>Variance</th></tr>
+                <tr><td>1</td><td class="highlight">0.132</td><td class="highlight">0.023</td></tr>
+                <tr><td>2</td><td class="highlight">0.217</td><td class="highlight">0.040</td></tr>
+            </table>
+        </div>
+
+        <!-- Step 3: Normalize (x - mean) / sqrt(var + eps) -->
+        <div class="step step-3">
+            <h2>Step 3: Normalize</h2>
+            <div class="formula slide-in">norm_x = (x - mean) / sqrt(var + 1e-5)</div>
+            <table class="tensor-table">
+                <tr><th>Sample</th><th>x1</th><th>x2</th><th>x3</th><th>x4</th><th>x5</th></tr>
+                <tr><td>1</td><td>0.62</td><td>1.41</td><td>-0.87</td><td>0.59</td><td>-0.87</td></tr>
+                <tr><td>2</td><td>-0.02</td><td>0.11</td><td>-1.09</td><td>1.52</td><td>0.56</td></tr>
+            </table>
+        </div>
+
+        <!-- Step 4: Apply Scale and Shift -->
+        <div class="step step-4">
+            <h2>Step 4: Apply Scale and Shift</h2>
+            <div class="formula slide-in">output = scale * norm_x + shift</div>
+            <table class="tensor-table">
+                <tr><th>Parameter</th><th>Value</th></tr>
+                <tr><td>Scale</td><td class="highlight">[1, 1, 1, 1, 1]</td></tr>
+                <tr><td>Shift</td><td class="highlight">[0, 0, 0, 0, 0]</td></tr>
+            </table>
+        </div>
+
+        <!-- Step 5: Output Tensor -->
+        <div class="step step-5">
+            <h2>Step 5: Output Tensor (Mean ≈ 0, Variance ≈ 1)</h2>
+            <table class="tensor-table">
+                <tr><th>Sample</th><th>x1</th><th>x2</th><th>x3</th><th>x4</th><th>x5</th></tr>
+                <tr><td>1</td><td>0.62</td><td>1.41</td><td>-0.87</td><td>0.59</td><td>-0.87</td></tr>
+                <tr><td>2</td><td>-0.02</td><td>0.11</td><td>-1.09</td><td>1.52</td><td>0.56</td></tr>
+            </table>
+            <div class="bar-chart">
+                <div style="height: 100px;" class="bar"></div>
+                <div style="height: 150px;" class="bar"></div>
+                <div style="height: 50px;" class="bar"></div>
+                <div style="height: 90px;" class="bar"></div>
+                <div style="height: 50px;" class="bar"></div>
+            </div>
+            <p>Mean: ~0, Variance: ~1</p>
+        </div>
+    </div>
+</body>
+</html>
